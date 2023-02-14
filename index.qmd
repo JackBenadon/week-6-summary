@@ -1,6 +1,6 @@
 ---
-title: "Weekly Summary Template"
-author: "Author Name"
+title: "Week 6 Weekly Summary"
+author: "Jack Benadon"
 title-block-banner: true
 title-block-style: default
 toc: true
@@ -15,13 +15,11 @@ format: html
 ::: {.callout-important}
 ## TIL
 
-Include a _very brief_ summary of what you learnt in this class here. 
-
 Today, I learnt the following concepts in class:
 
-1. Item 1
-1. Item 2
-1. Item 3
+1. Multicolinearity
+1. Variable selection
+1. Shrinkage Estimators
 :::
 
 Provide more concrete details here. You can also use footenotes[^footnote] if you like
@@ -30,17 +28,110 @@ Provide more concrete details here. You can also use footenotes[^footnote] if yo
 #| output: false
 library(dplyr)
 library(purrr)
+library(ISLR2)
+library(tidyr)
+library(readr)
+library(glmnet)
+library(caret)
+library(car)
 ```
 
+```{R}
+library(ISLR2)
+attach(Boston)
 
-For example: 
-in class we learnt we learnt about the `map` function from the `purrr` package. 
-
-
-```{R results='hide', fig.width=7, fig.height=7}
-par(mfrow=c(3, 3), mar=c(3.5, 3.5, 2, 1), mgp=c(2.4, 0.8, 0))
-map(1:9, function(i)rnorm(1000) %>% hist(., main=i, col=i))
+df <- Boston
+head(df)
 ```
+
+### EDA
+#### Histograms:
+
+```{R}
+df %>% 
+  keep(is.numeric) %>%
+  
+```
+
+```{R}
+
+```
+
+```{R}
+df %>%
+  select(-chas) %>%
+  gather(key, val -medv) +
+  ggplot()+
+  geom_point(aplha)
+```
+some variables like rn and lstat are clearly significant
+
+### Regression model
+
+```{R}
+full_model <- lm(medv ~ . , df)
+summary(full_model)
+```
+```{R}
+plot(medv ~indus, df)
+abline(lm(medv ~ indus), col='red')
+model_indus <- lm(medv ~indus, df)
+summary(model_indus)
+```
+When you include age and indus on their own then they are significant but when you include all of the other variables they aren't.
+
+This is because they are related to other variables. This means that we can't keep our variables constant when calculating the p-value. Because if we add 1 to `age` we cant expect all the other variables to remain constant.
+
+```{R}
+R <- df %>%
+  keep(is.numeric) %>%
+  cor()
+R
+```
+
+```{R}
+library(corrplot)
+corrplot(R, type = "upper", )
+```
+Distance is negatively corralated to indus so if the number of businesses get increased then distance decreases.
+```{R}
+new_cols <- colnames(df) [-c(5,13)]
+model <-lm(medv ~ . , df %>% select(-c(indus, nox, dis)))
+summary(model)
+
+```
+
+### Variance Inflation Factors
+```{R}
+vif_model <- lm(medv ~ .,df)
+vif(vif_model)
+```
+The rule of thumb is that anything higher than 2 is considered high variance inflation
+
+### Stepwise Regresion
+The process of finding the order of the most important variables.
+```{R}
+null_model <- lm(medv ~ 1, df)
+full_model <- lm(medv ~ ., df)
+
+forward_model <- step(null_model, direction = "forward", scope = formula(full_model))
+summary(forward_model)
+
+```
+think of AIC as a replacement for $R^2$ but we're looking for a model with super low AIC values. 
+
+With backward selection model you start with the full model and start removing variables that will lower the AIC.
+
+in this case forward and backward selection have given the same result. **thats not always the case**. Thats why its important to do both and see if there are any differences.
+
+__You can also do `direction = "both"` which will do a combination of both forwards and backwards.__
+
+
+
+
+
+
+
 
 
 
@@ -62,15 +153,8 @@ Today, I learnt the following concepts in class:
 
 Provide more concrete details here, e.g., 
 
-In class we learnt how to use the `map` function to create multiple regression diagnostic plots
 
-```{R results='hide', fig.height=4}
-par(mfcol=c(2, 3), mar=c(3.5, 3.5, 2, 1), mgp=c(2.4, 0.8, 0))
-mtcars %>%
-  split(.$cyl) %>%
-  map(~ lm(mpg ~ wt, data = .x)) %>%
-  map(function(x)plot(x, which=c(1, 2)))
-```
+
 
 
 [^footnote]: You can include some footnotes here
